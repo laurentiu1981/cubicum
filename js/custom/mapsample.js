@@ -1,5 +1,6 @@
 (function(){
   var scene = new THREE.Scene();
+  var movingObjects = [];
   var camera = new THREE.PerspectiveCamera(
     75,                                     //Field of View
     window.innerWidth / window.innerHeight, //aspect ratio
@@ -81,7 +82,33 @@
 
     var planeObject = new THREE.Mesh( new THREE.BoxGeometry( x1, y1, thick), material );
     planeObject.position.set( 0, 0, depth );
+    addRandomPoints(planeObject, movingObjects, 100);
     return planeObject;
+  }
+
+  function addRandomPoints(parent, movingObjects, number) {
+    for (var i = 0; i < number; i++) {
+      var point = addPoint();
+      movingObjects.push(point);
+      parent.add(point);
+    }
+  }
+
+  var pointMaterial = new THREE.MeshNormalMaterial();
+
+  function addPoint() {
+
+    var pX = Math.random() * 2,
+        pY = Math.random() * 2,
+        pZ = 0,
+        geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    geometry.velocity = new THREE.Vector3(
+        Math.random() * 0.002 - 0.001,              // x
+        Math.random() * 0.002 - 0.001, // y: random vel
+        0);
+    var particle = new THREE.Mesh(geometry, pointMaterial);
+    particle.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, 0);
+    return particle;
   }
 
   function createAGrid(opts) {
@@ -138,7 +165,7 @@
 
   camera.position.z = 10; //move camera back so we can see the cube
 
-  var fps = 30;
+  var fps = 60;
   var now;
   var then = Date.now();
   var initial = Date.now();
@@ -170,11 +197,15 @@
 
       then = now - (delta % interval);
       renderer.render(scene, camera);
+      for (var index in movingObjects) {
+        movingObjects[index].position.x += movingObjects[index].geometry.velocity.x;
+        movingObjects[index].position.y += movingObjects[index].geometry.velocity.y;
+      }
 
       // ... Code for Drawing the Frame ...
       //rotate cube a little each frame
       //map.rotation.x += 0.01;
-      map.rotation.y = ((now - initial) / 1000 % cicleInterval) / cicleInterval * 2 * Math.PI;
+      //map.rotation.y = ((now - initial) / 1000 % cicleInterval) / cicleInterval * 2 * Math.PI;
     }
   };
   render();
