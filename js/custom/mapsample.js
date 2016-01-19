@@ -103,8 +103,8 @@
         pZ = 0,
         geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
     geometry.velocity = new THREE.Vector3(
-        Math.random() * 0.002 - 0.001,              // x
-        Math.random() * 0.002 - 0.001, // y: random vel
+        Math.random() * 0.2 - 0.1,              // x
+        Math.random() * 0.2 - 0.1, // y: random vel
         0);
     var particle = new THREE.Mesh(geometry, pointMaterial);
     particle.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, 0);
@@ -172,6 +172,7 @@
   var interval = 1000/fps;
   var delta;
   var cicleInterval = 10;
+  var timeCoeficient = 0;
   var render = function() {
     requestAnimationFrame(render);
 
@@ -181,6 +182,7 @@
     delta = now - then;
 
     if (delta > interval) {
+      timeCoeficient = delta / 1000;
       // update time stuffs
 
       // Just `then = now` is not enough.
@@ -198,8 +200,8 @@
       then = now - (delta % interval);
       renderer.render(scene, camera);
       for (var index in movingObjects) {
-        movingObjects[index].position.x += movingObjects[index].geometry.velocity.x;
-        movingObjects[index].position.y += movingObjects[index].geometry.velocity.y;
+        movingObjects[index].position.x += movingObjects[index].geometry.velocity.x * timeCoeficient;
+        movingObjects[index].position.y += movingObjects[index].geometry.velocity.y * timeCoeficient;
       }
 
       // ... Code for Drawing the Frame ...
