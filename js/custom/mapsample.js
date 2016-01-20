@@ -94,7 +94,7 @@
     }
   }
 
-  var pointMaterial = new THREE.MeshNormalMaterial();
+
 
   function addPoint() {
 
@@ -106,6 +106,7 @@
         Math.random() * 0.2 - 0.1,              // x
         Math.random() * 0.2 - 0.1, // y: random vel
         0);
+    var pointMaterial = new THREE.MeshBasicMaterial({color: 0x123456});
     var particle = new THREE.Mesh(geometry, pointMaterial);
     particle.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, 0);
     return particle;
@@ -160,7 +161,7 @@
   var raycaster = new THREE.Raycaster();
   var mouse = new THREE.Vector2(), INTERSECTED;
 
-  var intersects;
+  var intersects = [];
 
   scene.add(cube);
   scene.add(map);
@@ -180,10 +181,11 @@
   var timeCoeficient = 0;
   var render = function() {
     requestAnimationFrame(render);
-    raycaster.setFromCamera(mouse, camera);
-    intersects = raycaster.intersectObjects( scene.children );
+
     if (intersects.length > 0) {
-      console.log(intersects);
+      for(var i in intersects) {
+        intersects[i].object.material.color.set( 0xff0000 );
+      }
     }
     now = Date.now();
     delta = now - then;
@@ -223,6 +225,8 @@
     event.preventDefault();
     mouse.x = ( event.clientX / renderer.domElement.width ) * 2 - 1;
     mouse.y = - ( event.clientY / renderer.domElement.height ) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    intersects = raycaster.intersectObjects( movingObjects );
   }
   window.addEventListener( 'mousemove', onMouseMove, false );
 
