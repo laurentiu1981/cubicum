@@ -157,6 +157,11 @@
   var geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
   var material = new THREE.MeshNormalMaterial();
   var cube = new THREE.Mesh(geometry, material);
+  var raycaster = new THREE.Raycaster();
+  var mouse = new THREE.Vector2(), INTERSECTED;
+
+  var intersects;
+
   scene.add(cube);
   scene.add(map);
   for (var i = -5; i <= 5; i++) {
@@ -175,9 +180,11 @@
   var timeCoeficient = 0;
   var render = function() {
     requestAnimationFrame(render);
-
-
-
+    raycaster.setFromCamera(mouse, camera);
+    intersects = raycaster.intersectObjects( scene.children );
+    if (intersects.length > 0) {
+      console.log(intersects);
+    }
     now = Date.now();
     delta = now - then;
 
@@ -212,35 +219,12 @@
   };
   render();
 
+  function onMouseMove(event) {
+    event.preventDefault();
+    mouse.x = ( event.clientX / renderer.domElement.width ) * 2 - 1;
+    mouse.y = - ( event.clientY / renderer.domElement.height ) * 2 + 1;
+  }
+  window.addEventListener( 'mousemove', onMouseMove, false );
 
 
-  //function draw() {
-  //
-  //  requestAnimationFrame(draw);
-  //
-  //  now = Date.now();
-  //  delta = now - then;
-  //
-  //  if (delta > interval) {
-  //    // update time stuffs
-  //
-  //    // Just `then = now` is not enough.
-  //    // Lets say we set fps at 10 which means
-  //    // each frame must take 100ms
-  //    // Now frame executes in 16ms (60fps) so
-  //    // the loop iterates 7 times (16*7 = 112ms) until
-  //    // delta > interval === true
-  //    // Eventually this lowers down the FPS as
-  //    // 112*10 = 1120ms (NOT 1000ms).
-  //    // So we have to get rid of that extra 12ms
-  //    // by subtracting delta (112) % interval (100).
-  //    // Hope that makes sense.
-  //
-  //    then = now - (delta % interval);
-  //
-  //    // ... Code for Drawing the Frame ...
-  //  }
-  //}
-  //
-  //draw();
 })();
