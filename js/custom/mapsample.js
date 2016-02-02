@@ -1,6 +1,7 @@
 (function(){
   var scene = new THREE.Scene();
   var movingObjects = [];
+  var activeObject;
   var camera = new THREE.PerspectiveCamera(
     75,                                     //Field of View
     window.innerWidth / window.innerHeight, //aspect ratio
@@ -14,12 +15,12 @@
 
   function createMap() {
     var boundingGrid = new THREE.Object3D(),
-      depth = 5, //depth
-      width = 5, //width
-      height = 5, //height
-      a = 10,
-      b = 10,
-      c = 10;
+      depth = 50, //depth
+      width = 50, //width
+      height = 50, //height
+      a = 100,
+      b = 100,
+      c = 100;
     var newGridXY = createAGrid({
       height: width,
       width: height,
@@ -33,8 +34,8 @@
     var newGridYZ = createAGrid({
       height: width,
       width: depth,
-      linesHeight: 10,
-      linesWidth: 10,
+      linesHeight: a,
+      linesWidth: b,
       color: 0xAF221A
     });
     newGridYZ.rotation.x = Math.PI/2;
@@ -80,7 +81,7 @@
       side: THREE.DoubleSide
     });
 
-    var planeObject = new THREE.Mesh( new THREE.BoxGeometry( x1, y1, thick), material );
+    var planeObject = new THREE.Mesh( new THREE.PlaneGeometry( x1, y1, 1), material );
     planeObject.position.set( 0, 0, depth );
     addRandomPoints(planeObject, movingObjects, 100);
     return planeObject;
@@ -128,8 +129,8 @@
 
     var gridObject = new THREE.Object3D(),
       gridGeo = new THREE.Geometry(),
-      stepw = 2 * config.width / config.linesWidth,
-      steph = 2 * config.height / config.linesHeight;
+      stepw = 20 * config.width / config.linesWidth,
+      steph = 20 * config.height / config.linesHeight;
 
     //width
     for (var i = -config.width; i <= config.width; i += stepw) {
@@ -169,7 +170,7 @@
     map.add(createAPlane(10, 10, 0.1, i));
   }
 
-  camera.position.z = 10; //move camera back so we can see the cube
+  camera.position.z = 100; //move camera back so we can see the cube
 
   var fps = 60;
   var now;
@@ -184,7 +185,9 @@
 
     if (intersects.length > 0) {
       for(var i in intersects) {
-        intersects[i].object.material.color.set( 0xff0000 );
+        if (!activeObject || intersects[i].object.uuid != activeObject.object.uuid) {
+          intersects[i].object.material.color.set(0xff0000);
+        }
       }
     }
     now = Date.now();
@@ -228,7 +231,47 @@
     raycaster.setFromCamera(mouse, camera);
     intersects = raycaster.intersectObjects( movingObjects );
   }
+
+  function onMouseClick(event) {
+    if (!activeObject) {
+      event.preventDefault();
+      mouse.x = ( event.clientX / renderer.domElement.width ) * 2 - 1;
+      mouse.y = -( event.clientY / renderer.domElement.height ) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      intersects = raycaster.intersectObjects(movingObjects);
+      if (intersects.length > 0) {
+        activeObject = intersects[0];
+        activeObject.object.material.color.set( 0xd8ffe4 );
+        console.log('new activeObject');
+      }
+    }
+    else {
+      var normal = new THREE.Vector3(0,0,1);
+      var activePoint = activeObject.object.position;
+      var mousePoint = new THREE.Vector3(mouse.x, mouse.y, 16);
+      var rayProjection = new THREE.Raycaster(mousePoint, normal.clone().negate(), 0, Number.POSITIVE_INFINITY);
+      var hits = rayProjection.intersectObject(activeObject.object.parent, true);
+      if (hits.length) {
+        console.log('active point: ' + activePoint.x + ':' + activePoint.y + '  projection point: ' + hits[0].point.x + ':' + hits[0].point.y);
+
+        var speed = Math.sqrt(Math.pow(activeObject.object.geometry.velocity.x, 2) + Math.pow(activeObject.object.geometry.velocity.y, 2));
+        var distance = Math.sqrt(Math.pow(hits[0].point.x - activePoint.x, 2) + Math.pow(hits[0].point.y - activePoint.y, 2));
+
+        var time = distance / speed;
+        console.log('time: ' + time);
+        var Vx = (hits[0].point.x - activePoint.x) / time;
+        var Vy = (hits[0].point.y - activePoint.y) / time;
+
+        activeObject.object.geometry.velocity.x = Vx;
+        activeObject.object.geometry.velocity.y = Vy;
+      }
+
+
+    }
+  }
+
   window.addEventListener( 'mousemove', onMouseMove, false );
+  window.addEventListener( 'click', onMouseClick, false );
 
 
 })();
