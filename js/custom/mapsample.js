@@ -255,21 +255,29 @@
         console.log('active point: ' + activePoint.x + ':' + activePoint.y + '  projection point: ' + hits[0].point.x + ':' + hits[0].point.y);
 
         var speed = Math.sqrt(Math.pow(activeObject.object.geometry.velocity.x, 2) + Math.pow(activeObject.object.geometry.velocity.y, 2));
-        var distance = Math.sqrt(Math.pow(hits[0].point.x - activePoint.x, 2) + Math.pow(hits[0].point.y - activePoint.y, 2));
+        var Vx = Math.sin(Math.atan(Math.abs(hits[0].point.x - activePoint.x) / Math.abs(hits[0].point.y - activePoint.y))) * speed;
+        var Vy = Math.sqrt(Math.pow(speed, 2) - Math.pow(Vx, 2));
 
-        var time = distance / speed;
-        console.log('time: ' + time);
-        var Vx = (hits[0].point.x - activePoint.x) / time;
-        var Vy = (hits[0].point.y - activePoint.y) / time;
-
-        activeObject.object.geometry.velocity.x = Vx;
-        activeObject.object.geometry.velocity.y = Vy;
+        activeObject.object.geometry.velocity.x = Vx * (hits[0].point.x > activePoint.x ? 1 : -1);
+        activeObject.object.geometry.velocity.y = Vy * (hits[0].point.y > activePoint.y ? 1 : -1);
+        console.log(speed, Vx, Vy, Math.sqrt(Math.pow(Vx, 2) + Math.pow(Vy, 2)));
+        //activeObject.object.geometry.velocity.x = activeObject.object.geometry.velocity.y = 0.3;
       }
 
 
     }
   }
 
+  function onWindowResize() {
+
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize( window.innerWidth, window.innerHeight );
+
+  }
+
+  window.addEventListener( 'resize', onWindowResize, false );
   window.addEventListener( 'mousemove', onMouseMove, false );
   window.addEventListener( 'click', onMouseClick, false );
 
