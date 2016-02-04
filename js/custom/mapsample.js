@@ -162,7 +162,26 @@
   var raycaster = new THREE.Raycaster();
   var mouse = new THREE.Vector2(), INTERSECTED;
 
+  var lineMaterial = new THREE.LineBasicMaterial({
+    color: 0x0000ff
+  });
+  var vectorLineMaterial = new THREE.LineBasicMaterial({
+    color: 0x00ffff
+  });
+  var lineGeometry = new THREE.Geometry();
+  lineGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
+  lineGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
+
+  var vectorLineGeometry = new THREE.Geometry();
+  vectorLineGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
+  vectorLineGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
+
+  var line = new THREE.Line(lineGeometry, lineMaterial);
+  var vectorLine = new THREE.Line(vectorLineGeometry, vectorLineMaterial);
+
   var intersects = [];
+  var planeIntersect;
+  var mouseDown = false;
 
   scene.add(cube);
   scene.add(map);
@@ -226,10 +245,31 @@
 
   function onMouseMove(event) {
     event.preventDefault();
-    mouse.x = ( event.clientX / renderer.domElement.width ) * 2 - 1;
-    mouse.y = - ( event.clientY / renderer.domElement.height ) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-    intersects = raycaster.intersectObjects( movingObjects );
+    if (!mouseDown) {
+      mouse.x = ( event.clientX / renderer.domElement.width ) * 2 - 1;
+      mouse.y = -( event.clientY / renderer.domElement.height ) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      intersects = raycaster.intersectObjects(movingObjects);
+      if (activeObject) {
+        planeIntersect = raycaster.intersectObject(activeObject.object.parent);
+        if (planeIntersect.length) {
+          lineGeometry.vertices[1].x = planeIntersect[0].point.x;
+          lineGeometry.vertices[1].y = planeIntersect[0].point.y;
+          lineGeometry.vertices[1].z = planeIntersect[0].point.z;
+          lineGeometry.vertices[0].x = planeIntersect[0].point.x;
+          lineGeometry.vertices[0].y = planeIntersect[0].point.y;
+          lineGeometry.vertices[0].z = planeIntersect[0].point.z + 1;
+        }
+      }
+    }
+    lineGeometry.verticesNeedUpdate = true;
+  }
+
+  function onMouseDown(event) {
+    mouseDown = true;
+  }
+  function onMouseUp(event) {
+    mouseDown = false;
   }
 
   function onMouseClick(event) {
@@ -243,25 +283,28 @@
         activeObject = intersects[0];
         activeObject.object.material.color.set( 0xd8ffe4 );
         console.log('new activeObject');
+        scene.add(line);
+        scene.add(vectorLine);
       }
     }
     else {
-      var normal = new THREE.Vector3(0,0,1);
       var activePoint = activeObject.object.position;
-      var mousePoint = new THREE.Vector3(mouse.x, mouse.y, 16);
-      var rayProjection = new THREE.Raycaster(mousePoint, normal.clone().negate(), 0, Number.POSITIVE_INFINITY);
-      var hits = rayProjection.intersectObject(activeObject.object.parent, true);
+      var hits = raycaster.intersectObject(activeObject.object.parent, true);
       if (hits.length) {
-        console.log('active point: ' + activePoint.x + ':' + activePoint.y + '  projection point: ' + hits[0].point.x + ':' + hits[0].point.y);
-
         var speed = Math.sqrt(Math.pow(activeObject.object.geometry.velocity.x, 2) + Math.pow(activeObject.object.geometry.velocity.y, 2));
-        var Vx = Math.sin(Math.atan(Math.abs(hits[0].point.x - activePoint.x) / Math.abs(hits[0].point.y - activePoint.y))) * speed;
-        var Vy = Math.sqrt(Math.pow(speed, 2) - Math.pow(Vx, 2));
+        var xyangle = Math.atan(Math.abs(hits[0].point.x - activePoint.x) / Math.abs(hits[0].point.y - activePoint.y));
+        var Vx = Math.sin(xyangle) * speed;
+        var Vy = Math.cos(xyangle) * speed;
 
         activeObject.object.geometry.velocity.x = Vx * (hits[0].point.x > activePoint.x ? 1 : -1);
         activeObject.object.geometry.velocity.y = Vy * (hits[0].point.y > activePoint.y ? 1 : -1);
-        console.log(speed, Vx, Vy, Math.sqrt(Math.pow(Vx, 2) + Math.pow(Vy, 2)));
-        //activeObject.object.geometry.velocity.x = activeObject.object.geometry.velocity.y = 0.3;
+        vectorLineGeometry.vertices[0].x = activePoint.x;
+        vectorLineGeometry.vertices[0].y = activePoint.y;
+        vectorLineGeometry.vertices[0].z = activePoint.z + activeObject.object.parent.position.z;
+        vectorLineGeometry.vertices[1].x = hits[0].point.x;
+        vectorLineGeometry.vertices[1].y = hits[0].point.y;
+        vectorLineGeometry.vertices[1].z = hits[0].point.z;
+        vectorLineGeometry.verticesNeedUpdate = true;
       }
 
 
@@ -269,16 +312,16 @@
   }
 
   function onWindowResize() {
-
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-
     renderer.setSize( window.innerWidth, window.innerHeight );
 
   }
 
   window.addEventListener( 'resize', onWindowResize, false );
   window.addEventListener( 'mousemove', onMouseMove, false );
+  window.addEventListener( 'mousedown', onMouseDown, false );
+  window.addEventListener( 'mousedown', onMouseUp, false );
   window.addEventListener( 'click', onMouseClick, false );
 
 
