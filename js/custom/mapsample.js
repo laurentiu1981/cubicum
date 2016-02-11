@@ -1,6 +1,7 @@
 (function(){
   var scene = new THREE.Scene();
   var movingObjects = [];
+  var mixers = [];
   var activeObject;
   var camera = new THREE.PerspectiveCamera(
     75,                                     //Field of View
@@ -83,26 +84,22 @@
 
     var planeObject = new THREE.Mesh( new THREE.PlaneGeometry( x1, y1, 1), material );
     planeObject.position.set( 0, 0, depth );
-    addRandomPoints(planeObject, movingObjects, 100);
+    addRandomPoints(planeObject, movingObjects, 10);
     return planeObject;
   }
 
   function addRandomPoints(parent, movingObjects, number) {
     for (var i = 0; i < number; i++) {
-      var point = addPoint();
-      movingObjects.push(point);
-      parent.add(point);
+      //addPoint(parent, movingObjects);
+      addHorse(parent, movingObjects);
     }
   }
 
 
 
-  function addPoint() {
+  function addPoint(parent, movingObjects) {
 
-    var pX = Math.random() * 2,
-        pY = Math.random() * 2,
-        pZ = 0,
-        geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    var geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
     geometry.velocity = new THREE.Vector3(
         Math.random() * 0.2 - 0.1,              // x
         Math.random() * 0.2 - 0.1, // y: random vel
@@ -110,7 +107,57 @@
     var pointMaterial = new THREE.MeshBasicMaterial({color: 0x123456});
     var particle = new THREE.Mesh(geometry, pointMaterial);
     particle.position.set(Math.random() * 10 - 5, Math.random() * 10 - 5, 0);
-    return particle;
+    movingObjects.push(particle);
+    parent.add(particle);
+  }
+
+  var planeNormalAxis = new THREE.Vector3(0, 1, 0);
+  var maxSpeed = 0.14142135623;
+  var maxMixerUpdate = 0.04;
+  function addHorse(parent, movingObjects) {
+    var loader = new THREE.JSONLoader();
+    loader.load( "models/animated/horse.json", function( geometry ) {
+
+      var mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( {
+        vertexColors: THREE.FaceColors,
+        morphTargets: true
+      } ) );
+      mesh.scale.set( 0.001, 0.001, 0.001 );
+      geometry.velocity = new THREE.Vector3(
+        Math.random() * 0.2 - 0.1,              // x
+        Math.random() * 0.2 - 0.1, // y: random vel
+        0);
+      mesh.position.set(0, 0, 0);
+      mesh.rotateY(Math.PI / 2);
+      mesh.rotateZ(Math.PI / 2);
+      var speed = Math.sqrt(Math.pow(geometry.velocity.x, 2) + Math.pow(geometry.velocity.y, 2));
+
+
+      rotateBasedOnVelocity(mesh);
+
+      movingObjects.push(mesh);
+      parent.add(mesh);
+
+      var mixer = new THREE.AnimationMixer( mesh );
+      mixers.push(mixer);
+      var clip = THREE.AnimationClip.CreateFromMorphTargetSequence( 'gallop', geometry.morphTargets, 30 );
+      mixer.clipAction( clip ).setDuration( 1 ).play();
+      mixer.updateCoeficient = speed/maxSpeed * maxMixerUpdate;
+    } );
+  }
+
+  function rotateBasedOnVelocity(mesh, click) {
+    var rotateAngle = Math.atan(Math.abs(mesh.geometry.velocity.y) / Math.abs(mesh.geometry.velocity.x));
+    if (mesh.geometry.velocity.x < 0) {
+      rotateAngle = Math.PI - rotateAngle;
+    }
+    if (click) {
+      mesh.rotateOnAxis(planeNormalAxis, 0);
+      return;
+    }
+    var axisRotation = (rotateAngle) * (mesh.geometry.velocity.y < 0 ? -1 : 1);
+    mesh.rotateOnAxis(planeNormalAxis, axisRotation - (mesh.geometry.currentAxisRotation ? mesh.geometry.currentAxisRotation : 0));
+    mesh.geometry.currentAxisRotation = axisRotation;
   }
 
   function createAGrid(opts) {
@@ -191,7 +238,7 @@
 
   camera.position.z = 100; //move camera back so we can see the cube
 
-  var fps = 60;
+  var fps = 30;
   var now;
   var then = Date.now();
   var initial = Date.now();
@@ -233,6 +280,10 @@
       for (var index in movingObjects) {
         movingObjects[index].position.x += movingObjects[index].geometry.velocity.x * timeCoeficient;
         movingObjects[index].position.y += movingObjects[index].geometry.velocity.y * timeCoeficient;
+      }
+
+      for (var mindex in mixers) {
+        mixers[mindex].update(mixers[mindex].updateCoeficient);
       }
 
       // ... Code for Drawing the Frame ...
@@ -298,6 +349,9 @@
 
         activeObject.object.geometry.velocity.x = Vx * (hits[0].point.x > activePoint.x ? 1 : -1);
         activeObject.object.geometry.velocity.y = Vy * (hits[0].point.y > activePoint.y ? 1 : -1);
+
+        rotateBasedOnVelocity(activeObject.object);
+
         vectorLineGeometry.vertices[0].x = activePoint.x;
         vectorLineGeometry.vertices[0].y = activePoint.y;
         vectorLineGeometry.vertices[0].z = activePoint.z + activeObject.object.parent.position.z;
