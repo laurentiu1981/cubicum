@@ -1,4 +1,7 @@
+import {GLTFLoader} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/loaders/GLTFLoader.js';
+
 (function(){
+
   var scene = new THREE.Scene();
   var movingObjects = [];
   var mixers = [];
@@ -115,22 +118,20 @@
   var maxSpeed = 0.14142135623;
   var maxMixerUpdate = 0.04;
   function addHorse(parent, movingObjects) {
-    var loader = new THREE.JSONLoader();
-    loader.load( "models/animated/horse.json", function( geometry ) {
+    var loader = new GLTFLoader();
+    loader.load( "models/animated/horse.glb", function( gltf ) {
 
-      var mesh = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( {
-        vertexColors: THREE.FaceColors,
-        morphTargets: true
-      } ) );
+      var mesh = gltf.scene.children[ 0 ];
+      mesh.material.overdraw = 0.5;
       mesh.scale.set( 0.001, 0.001, 0.001 );
-      geometry.velocity = new THREE.Vector3(
+      mesh.velocity = new THREE.Vector3(
         Math.random() * 0.2 - 0.1,              // x
         Math.random() * 0.2 - 0.1, // y: random vel
         0);
       mesh.position.set(0, 0, 0);
       mesh.rotateY(Math.PI / 2);
       mesh.rotateZ(Math.PI / 2);
-      var speed = Math.sqrt(Math.pow(geometry.velocity.x, 2) + Math.pow(geometry.velocity.y, 2));
+      var speed = Math.sqrt(Math.pow(mesh.velocity.x, 2) + Math.pow(mesh.velocity.y, 2));
 
 
       rotateBasedOnVelocity(mesh);
@@ -140,22 +141,23 @@
 
       var mixer = new THREE.AnimationMixer( mesh );
       mixers.push(mixer);
-      var clip = THREE.AnimationClip.CreateFromMorphTargetSequence( 'gallop', geometry.morphTargets, 30 );
+      var clip = gltf.animations[ 0 ];
       mixer.clipAction( clip ).setDuration( 1 ).play();
       mixer.updateCoeficient = speed/maxSpeed * maxMixerUpdate;
+
     } );
   }
 
   function rotateBasedOnVelocity(mesh, click) {
-    var rotateAngle = Math.atan(Math.abs(mesh.geometry.velocity.y) / Math.abs(mesh.geometry.velocity.x));
-    if (mesh.geometry.velocity.x < 0) {
+    var rotateAngle = Math.atan(Math.abs(mesh.velocity.y) / Math.abs(mesh.velocity.x));
+    if (mesh.velocity.x < 0) {
       rotateAngle = Math.PI - rotateAngle;
     }
     if (click) {
       mesh.rotateOnAxis(planeNormalAxis, 0);
       return;
     }
-    var axisRotation = (rotateAngle) * (mesh.geometry.velocity.y < 0 ? -1 : 1);
+    var axisRotation = (rotateAngle) * (mesh.velocity.y < 0 ? -1 : 1);
     mesh.rotateOnAxis(planeNormalAxis, axisRotation - (mesh.geometry.currentAxisRotation ? mesh.geometry.currentAxisRotation : 0));
     mesh.geometry.currentAxisRotation = axisRotation;
   }
@@ -191,7 +193,7 @@
       gridGeo.vertices.push(new THREE.Vector3(i, config.width, 0));
     }
 
-    var line = new THREE.Line(gridGeo, material, THREE.LinePieces);
+    var line = new THREE.Line(gridGeo, material, THREE.LineSegments);
     gridObject.add(line);
 
     return gridObject;
@@ -278,8 +280,8 @@
       then = now - (delta % interval);
       renderer.render(scene, camera);
       for (var index in movingObjects) {
-        movingObjects[index].position.x += movingObjects[index].geometry.velocity.x * timeCoeficient;
-        movingObjects[index].position.y += movingObjects[index].geometry.velocity.y * timeCoeficient;
+        movingObjects[index].position.x += movingObjects[index].velocity.x * timeCoeficient;
+        movingObjects[index].position.y += movingObjects[index].velocity.y * timeCoeficient;
       }
 
       for (var mindex in mixers) {
@@ -342,13 +344,13 @@
       var activePoint = activeObject.object.position;
       var hits = raycaster.intersectObject(activeObject.object.parent, true);
       if (hits.length) {
-        var speed = Math.sqrt(Math.pow(activeObject.object.geometry.velocity.x, 2) + Math.pow(activeObject.object.geometry.velocity.y, 2));
+        var speed = Math.sqrt(Math.pow(activeObject.object.velocity.x, 2) + Math.pow(activeObject.object.velocity.y, 2));
         var xyangle = Math.atan(Math.abs(hits[0].point.x - activePoint.x) / Math.abs(hits[0].point.y - activePoint.y));
         var Vx = Math.sin(xyangle) * speed;
         var Vy = Math.cos(xyangle) * speed;
 
-        activeObject.object.geometry.velocity.x = Vx * (hits[0].point.x > activePoint.x ? 1 : -1);
-        activeObject.object.geometry.velocity.y = Vy * (hits[0].point.y > activePoint.y ? 1 : -1);
+        activeObject.object.velocity.x = Vx * (hits[0].point.x > activePoint.x ? 1 : -1);
+        activeObject.object.velocity.y = Vy * (hits[0].point.y > activePoint.y ? 1 : -1);
 
         rotateBasedOnVelocity(activeObject.object);
 
